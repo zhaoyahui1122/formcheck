@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FormCheck — AI Form Analysis for Lifters Who Train Alone</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🏋️</span>
+    <div>
+      <h1>FormCheck</h1>
+      <p class="tagline" data-i18n="tagline">Your coach, in your pocket — no spotter needed.</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button id="langToggle" class="btn ghost" type="button">中文</button>
+    <button id="settingsBtn" class="btn ghost" type="button">⚙️ <span data-i18n="settings">Settings</span></button>
+  </div>
+</header>
+
+<main>
+  <!-- Step 1: pick a lift -->
+  <section class="card">
+    <h2 data-i18n="step1">1 · Pick your lift</h2>
+    <div class="ex-grid" id="exGrid">
+      <button class="ex-card selected" type="button" data-ex="bench">
+        <span class="ex-emoji">🛏️</span>
+        <span class="ex-name" data-i18n="bench">Bench Press</span>
+        <span class="ex-desc" data-i18n="benchDesc">Bar path &amp; elbow angle</span>
+      </button>
+      <button class="ex-card" type="button" data-ex="squat">
+        <span class="ex-emoji">🏋️</span>
+        <span class="ex-name" data-i18n="squat">Squat</span>
+        <span class="ex-desc" data-i18n="squatDesc">Depth, knee tracking &amp; lean</span>
+      </button>
+      <button class="ex-card" type="button" data-ex="deadlift">
+        <span class="ex-emoji">💪</span>
+        <span class="ex-name" data-i18n="deadlift">Deadlift</span>
+        <span class="ex-desc" data-i18n="deadliftDesc">Hip shoot, lockout &amp; back</span>
+      </button>
+    </div>
+    <p class="hint" data-i18n="sideHint">Film from the <b>side</b>, full body in frame, bar visible. One rep or more — the longer the clip, the better.</p>
+  </section>
+
+  <!-- Step 2: video -->
+  <section class="card">
+    <h2 data-i18n="step2">2 · Add your video</h2>
+    <div class="input-row">
+      <label class="btn primary file-label" for="videoInput">📹 <span data-i18n="upload">Upload a lift video</span></label>
+      <input id="videoInput" type="file" accept="video/*" hidden>
+      <button id="demoBtn" class="btn" type="button">▶️ <span data-i18n="demo">Try the demo (no video needed)</span></button>
+      <button id="analyzeBtn" class="btn accent" type="button" disabled>🔍 <span data-i18n="analyze">Analyze form</span></button>
+    </div>
+    <div id="progressWrap" class="progress-wrap hidden">
+      <div class="progress-bar"><div id="progressFill"></div></div>
+      <p id="progressText" class="progress-text"></p>
+    </div>
+    <p id="statusText" class="status"></p>
+    <p id="multiWarn" class="status warn hidden"></p>
+  </section>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" type="button" data-tab="video" data-i18n="tabVideo">Video</button>
+    <button class="tab" type="button" data-tab="analysis" data-i18n="tabAnalysis">Analysis</button>
+    <button class="tab" type="button" data-tab="feedback" data-i18n="tabFeedback">Feedback</button>
+  </div>
+
+  <!-- Video tab -->
+  <section class="card tab-panel active" id="tab-video">
+    <div class="video-stage">
+      <video id="video" playsinline controls muted loop></video>
+      <canvas id="overlay"></canvas>
+      <span id="demoBadge" class="demo-badge hidden">SAMPLE DATA · 演示数据</span>
+    </div>
+    <div class="video-controls">
+      <button id="playBtn" class="btn" type="button" disabled>▶️ <span data-i18n="play">Play</span></button>
+      <div id="liveReadout" class="live-readout">—</div>
+    </div>
+    <p class="hint" data-i18n="videoHint">Skeleton and bar path are drawn from on-device pose estimation. Nothing is uploaded to a server.</p>
+  </section>
+
+  <!-- Analysis tab -->
+  <section class="card tab-panel" id="tab-analysis">
+    <div class="charts">
+      <div class="chart-box">
+        <h3 data-i18n="angleChart">Joint angle over time</h3>
+        <canvas id="angleChart" width="640" height="260"></canvas>
+        <p class="chart-legend" id="angleLegend"></p>
+      </div>
+      <div class="chart-box">
+        <h3 data-i18n="barChart">Bar path (side view)</h3>
+        <canvas id="barPathChart" width="640" height="260"></canvas>
+        <p class="chart-legend" data-i18n="barLegend">Each dot is one frame. A good bar path is a tight, near-vertical line.</p>
+      </div>
+    </div>
+    <h3 data-i18n="repTable">Rep by rep</h3>
+    <div class="table-wrap">
+      <table id="repTable">
+        <thead><tr>
+          <th data-i18n="rep">Rep</th>
+          <th data-i18n="minAngle">Min angle</th>
+          <th data-i18n="ecc">Lowering</th>
+          <th data-i18n="con">Lifting</th>
+          <th data-i18n="bottom">At the bottom</th>
+        </tr></thead>
+        <tbody id="repTableBody"><tr><td colspan="5" class="muted" data-i18n="noReps">No analysis yet — upload a video or run the demo.</td></tr></tbody>
+      </table>
+    </div>
+    <p class="hint" id="analysisMeta"></p>
+  </section>
+
+  <!-- Feedback tab -->
+  <section class="card tab-panel" id="tab-feedback">
+    <div class="score-row">
+      <div class="score-ring" id="scoreRing"><span id="scoreValue">–</span><span class="score-max">/10</span></div>
+      <div class="score-text">
+        <h3 id="scoreLabel" data-i18n="scorePending">Analyze a lift to get your score.</h3>
+        <p id="scoreSub" class="muted"></p>
+      </div>
+    </div>
+    <h3 data-i18n="issues">What to fix</h3>
+    <ul id="issuesList" class="issues">
+      <li class="muted" data-i18n="noIssues">Nothing here yet.</li>
+    </ul>
+    <h3 data-i18n="aiCoach">AI coach</h3>
+    <div class="gemini-box">
+      <p class="hint" data-i18n="geminiHint">Gemini turns the measured numbers above into plain-language coaching. The numbers are computed on-device; the AI only explains them.</p>
+      <button id="geminiBtn" class="btn" type="button" disabled>✨ <span data-i18n="geminiBtn">Get AI coaching</span></button>
+      <p id="geminiText" class="gemini-text"></p>
+    </div>
+    <div class="feedback-actions">
+      <button id="exportBtn" class="btn" type="button" disabled>⬇️ <span data-i18n="export">Export analysis (JSON)</span></button>
+    </div>
+  </section>
+
+  <footer class="disclaimer">
+    <p data-i18n="disclaimer">⚠️ Coaching guidance, not medical advice. This is not a medical assessment and cannot diagnose injuries. Single-camera pose estimation has limits — angles are approximate. Stop training and consult a professional if anything hurts.</p>
+    <p class="muted small" data-i18n="privacy">Your video is processed on your device with MediaPipe and never leaves your browser. The Gemini API key (optional) is stored only in this browser's local storage.</p>
+    <p class="muted small">FormCheck · SLAY HACKS 2026 · Built with MediaPipe Pose (on-device) + computed biomechanics. Method inspired by <a href="https://github.com/eyal-prihar/formrate.ai" target="_blank" rel="noopener">FormRate.AI</a> (methodology reference only — no code reused).</p>
+  </footer>
+</main>
+
+<!-- Settings modal -->
+<div id="settingsModal" class="modal hidden">
+  <div class="modal-card">
+    <h2 data-i18n="settings">Settings</h2>
+    <label for="geminiKey" data-i18n="keyLabel">Google Gemini API key (optional)</label>
+    <input id="geminiKey" type="password" placeholder="AIza…" autocomplete="off">
+    <p class="hint" data-i18n="keyHint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. It is stored only in this browser (localStorage) and is used only to turn your measured numbers into coaching text. The form analysis works fully without it.</p>
+    <p id="keyStatus" class="status"></p>
+    <div class="modal-actions">
+      <button id="saveKeyBtn" class="btn accent" type="button" data-i18n="saveKey">Save key</button>
+      <button id="clearKeyBtn" class="btn ghost" type="button" data-i18n="clearKey">Remove key</button>
+      <button id="closeSettingsBtn" class="btn" type="button" data-i18n="close">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
